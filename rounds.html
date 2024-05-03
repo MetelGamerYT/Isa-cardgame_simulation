@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Rounds Visualization</title>
+</head>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f0f0;
+    }
+    h1 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    #buttons-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    #buttons-container button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+    #buttons-container button:hover {
+        background-color: #45a049;
+    }
+    #drop-area {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        background-color: #fff;
+    }
+    #drop-area.highlight {
+        border-color: #999;
+    }
+    .round {
+        border: 1px solid #ccc;
+        background-color: #fff;
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    }
+    .round-number {
+        font-weight: bold;
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+    .round-actions,
+    .player-hands {
+        margin-bottom: 10px;
+    }
+    .round-actions h4,
+    .player-hands h4 {
+        margin-top: 0;
+    }
+    .round-actions div,
+    .player-hands div {
+        margin-bottom: 5px;
+    }
+    #clear-json {
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    #load-json {
+        margin-bottom: 10px;
+    }
+    .card {
+        display: inline-block;
+        margin-right: 10px;
+        padding: 5px;
+        border-radius: 5px;
+    }
+    .card.blue {
+        background-color: #90caf9;
+    }
+    .card.green {
+        background-color: #a5d6a7;
+    }
+    .card.red {
+        background-color: #ef9a9a;
+    }
+    .card.yellow {
+        background-color: #fff59d;
+    }
+    .card.black {
+        background-color: #bdbdbd;
+    }
+</style>
+<body>
+    <h1>Game Rounds Visualization</h1>
+
+    <div id="buttons-container">
+        <button id="load-json">Load JSON File</button>
+        <button id="clear-json">Clear JSON Data</button>
+    </div>
+
+    <div id="drop-area">
+        <input type="file" id="fileElem" multiple accept=".json" style="display:none">
+        <label for="fileElem">Drop JSON file here or click to choose</label>
+    </div>
+
+    <div id="rounds-container"></div>
+    <script>
+        document.getElementById('load-json').addEventListener('click', function() {
+            document.getElementById('fileElem').click();
+        });
+
+        document.getElementById('fileElem').addEventListener('change', function() {
+            const files = this.files;
+            handleFiles(files);
+        });
+
+        const dropArea = document.getElementById('drop-area');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            [...files].forEach(uploadFile);
+        }
+
+        function uploadFile(file) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                displayRounds(data);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function displayRounds(data) {
+            const roundsContainer = document.getElementById('rounds-container');
+            roundsContainer.innerHTML = '';
+
+            data.forEach(round => {
+                const roundDiv = document.createElement('div');
+                roundDiv.classList.add('round');
+
+                const roundNumber = document.createElement('div');
+                roundNumber.classList.add('round-number');
+                roundNumber.textContent = `Round ${round.RoundNumber}`;
+                roundDiv.appendChild(roundNumber);
+
+                const roundActions = document.createElement('div');
+                roundActions.classList.add('round-actions');
+                roundActions.innerHTML = `<h4>Round Actions:</h4>${round.Actions.map(action => `<div>Player ${action.PlayerIndex + 1} played the card: <span class="card ${getCardColorClass(action.Card)}">${action.Card.Color} ${action.Card.Value}</span></div>`).join('')}`;
+                roundDiv.appendChild(roundActions);
+
+                const currentCard = document.createElement('div');
+                currentCard.textContent = `Card after the Round: ${round.CurrentCard.Color} - ${round.CurrentCard.Value}`;
+                roundDiv.appendChild(currentCard);
+
+                const winProbabilities = document.createElement('div');
+                winProbabilities.textContent = `Win Chance's: ${round.WinProbabilities.join(', ')}`;
+                roundDiv.appendChild(winProbabilities);
+
+                const playerHands = document.createElement('div');
+                playerHands.classList.add('player-hands');
+                playerHands.innerHTML = `<h4>Player Hands:</h4>${round.PlayerHands.map((hand, index) => `<div>Player ${index + 1}: <ul class="player-hand">${hand.map(card => `<li><span class="card ${getCardColorClass(card)}">${card.Color} ${card.Value}</span></li>`).join('')}</ul></div>`).join('')}`;
+                roundDiv.appendChild(playerHands);
+
+                roundsContainer.appendChild(roundDiv);
+            });
+        }
+
+        function getCardColorClass(card) {
+            if (card.Color === 'Blue') {
+                return 'blue';
+            } else if (card.Color === 'Green') {
+                return 'green';
+            } else if (card.Color === 'Red') {
+                return 'red';
+            } else if (card.Color === 'Yellow') {
+                return 'yellow';
+            } else {
+                return 'black';
+            }
+        }
+
+        document.getElementById('clear-json').addEventListener('click', function() {
+            document.getElementById('rounds-container').innerHTML = '';
+        });
+    </script>
+</body>
+</html>
