@@ -261,6 +261,11 @@ func main() {
 			copy(playerHands[i], hand)
 		}
 
+		// Make a copy of the current game stack so that previous rounds
+		// remain unchanged even when the stack grows in later rounds.
+		gameStackCopy := make([]GameCard, len(gameStapel))
+		copy(gameStackCopy, gameStapel)
+
 		roundData := RoundData{
 			RoundNumber:        roundNumber,
 			StartingPlayer:     startPlayerIndex,
@@ -269,7 +274,7 @@ func main() {
 			Actions:            roundActions,
 			CurrentPlayerIndex: currentPlayerIndex,
 			CurrentCard:        gameStapel[len(gameStapel)-1],
-			GameStack:          gameStapel,
+			GameStack:          gameStackCopy,
 			WinProbabilities:   winProbabilities,
 		}
 
